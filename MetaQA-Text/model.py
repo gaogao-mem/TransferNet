@@ -59,7 +59,43 @@ class TransferNet(nn.Module):
         obj_p = e[sub] * p
         out = torch.index_add(torch.zeros_like(e), 0, obj, obj_p)
         return out
-        
+     
+'''
+question:  tensor([  153,  2865,     4,   173,   327,   160,  9726,   122,   113, 17318,
+            0,     0,     0,     0,     0,     0], device='cuda:0') 
+topic_entity:  tensor([0., 0., 0.,  ..., 0., 0., 0.], device='cuda:0') 
+answer:  tensor([0., 0., 0.,  ..., 0., 0., 0.], device='cuda:0') 
+hop:  tensor(3, device='cuda:0')
+forward
+torch.Size([64, 16]) 16 tensor([ 6,  4,  3, 11,  4, 10,  2,  8,  7, 11, 11, 10,  3,  8,  8,  4,  3,  5,
+        10, 11,  8,  3,  9,  9,  3,  5,  4,  6,  9,  1,  6,  3,  8,  8,  3, 10,
+        10,  9, 11, 10,  9,  8,  8,  9,  8, 11,  9,  5,  8, 12,  7,  8,  3,  8,
+         6,  6,  8, 10,  6,  6, 10,  5,  7,  7], device='cuda:0')
+tensor([10, 12, 13,  5, 12,  6, 14,  8,  9,  5,  5,  6, 13,  8,  8, 12, 13, 11,
+         6,  5,  8, 13,  7,  7, 13, 11, 12, 10,  7, 15, 10, 13,  8,  8, 13,  6,
+         6,  7,  5,  6,  7,  8,  8,  7,  8,  5,  7, 11,  8,  4,  9,  8, 13,  8,
+        10, 10,  8,  6, 10, 10,  6, 11,  9,  9], device='cuda:0')
+last_e:  tensor([0., 0., 0.,  ..., 0., 0., 0.], device='cuda:0') torch.Size([42907])
+sort_score:  tensor(1., device='cuda:0') torch.Size([42907]) tensor(1492, device='cuda:0') torch.Size([42907])
+desc  torch.Size([114, 16]) 16 tensor([ 5,  7,  1,  5, 10,  5,  0,  5,  5,  7,  7,  7,  9,  6,  1,  0,  5,  5,
+         0,  0,  7,  5,  0,  3,  2,  5,  4,  0, 10,  8, 10,  1,  6,  0,  5,  5,
+         5,  9,  4,  2,  6,  6,  0,  7, 10,  6,  3,  5,  9,  7,  6,  0,  7,  0,
+         8,  0,  6,  7,  9,  5,  5,  2,  2,  3,  5,  0,  5,  4,  8,  1,  3,  7,
+         7,  0,  2,  5,  4,  8,  0,  8,  6,  6,  5,  8,  5,  7,  5, 10,  5,  2,
+         4,  7,  5,  6,  0,  2,  5,  0,  5,  6,  9,  0,  0,  5,  6,  6,  6,  1,
+         7,  6,  0,  9,  5,  1], device='cuda:0')
+tensor([11,  9, 15, 11,  6, 11, 16, 11, 11,  9,  9,  9,  7, 10, 15, 16, 11, 11,
+        16, 16,  9, 11, 16, 13, 14, 11, 12, 16,  6,  8,  6, 15, 10, 16, 11, 11,
+        11,  7, 12, 14, 10, 10, 16,  9,  6, 10, 13, 11,  7,  9, 10, 16,  9, 16,
+         8, 16, 10,  9,  7, 11, 11, 14, 14, 13, 11, 16, 11, 12,  8, 15, 13,  9,
+         9, 16, 14, 11, 12,  8, 16,  8, 10, 10, 11,  8, 11,  9, 11,  6, 11, 14,
+        12,  9, 11, 10, 16, 14, 11, 16, 11, 10,  7, 16, 16, 11, 10, 10, 10, 15,
+         9, 10, 16,  7, 11, 15], device='cuda:0')
+torch.Size([114, 16, 300])
+torch.Size([114, 16, 768]) torch.Size([114, 768])
+e_stack  [tensor([0., 0., 0.,  ..., 0., 0., 0.], device='cuda:0',
+       grad_fn=<IndexAddBackward0>)] 1 42907
+       '''
 
     def forward(self, questions, e_s, answers=None, hop=None):
         print("forward")
@@ -102,7 +138,9 @@ class TransferNet(nn.Module):
                 #     e_idx = last_e[i].gt(0).nonzero().squeeze(1).tolist()
                 #     random.shuffle(e_idx)
                 # else:
+                print("last_e: ", last_e[i], last_e[i].shape)
                 sort_score, sort_idx = torch.sort(last_e[i], dim=0, descending=True)
+                print("sort_score: ", sort_score[0], sort_score.shape, sort_idx[0], sort_idx.shape)
                 e_idx = sort_idx[sort_score.gt(self.ent_act_thres)].tolist()
                 e_idx = set(e_idx) - set([0])
                 if len(e_idx) == 0:
@@ -138,13 +176,14 @@ class TransferNet(nn.Module):
                 d_prob = torch.sigmoid(d_logit) # [rsz,]
                 # transfer probability
                 e_stack.append(self.follow(last_e[i], pair, d_prob))
-                print("e_stack ", e_stack.shape)
+                print("e_stack ", e_stack, len(e_stack), len(e_stack[0]))
 
                 # collect path
                 act_idx = d_prob.gt(0.9)
                 act_pair = pair[act_idx].tolist()
                 act_desc = [' '.join([self.vocab['id2word'][w] for w in d if w > 0]) for d in desc[act_idx].tolist()]
                 path_infos[i][t] = [(act_pair[_][0], act_desc[_], act_pair[_][1]) for _ in range(len(act_pair))]
+                exit()
 
             last_e = torch.stack(e_stack, dim=0)
             print("last_e ", last_e.shape)

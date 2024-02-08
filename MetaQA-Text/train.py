@@ -7,7 +7,7 @@ import shutil
 import numpy as np
 from tqdm import tqdm
 import time
-from utils.misc import MetricLogger, load_glove, idx_to_one_hot, UseStyle, RAdam
+from utils.misc import MetricLogger, load_glove, idx_to_one_hot, RAdam
 from .data import DataLoader
 from .model import TransferNet
 from .predict import validate

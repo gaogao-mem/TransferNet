@@ -2,4 +2,5 @@
 *.sublime-workspace
 *.sublime-project
 .idea
-
+*.ipynb_checkpoints
+*__pycache__
