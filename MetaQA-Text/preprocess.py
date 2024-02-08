@@ -25,14 +25,14 @@ def encode_kb(args, vocab):
         return r'(^|(?<=\W))' + s + r'((?=\W)|$)'
 
     kb = defaultdict(list)
-    for line in open(os.path.join(args.input_dir, 'kb/kb.txt')):
+    for line in open(os.path.join(args.input_dir, 'kb.txt')):
         s, r, o = line.strip().split('|')
         kb[s].append((r, o))
 
     # read from wiki
     triples = []
     cache = []
-    for line in tqdm(chain(open(os.path.join(args.input_dir, 'kb/wiki.txt')), ['\n'])):
+    for line in tqdm(chain(open(os.path.join(args.input_dir, 'wiki.txt')), ['\n'])):
         line = line.strip()
         if line == '':
             if len(cache) == 0:
@@ -117,8 +117,6 @@ def encode_kb(args, vocab):
 
 
     triples = sorted(triples)
-    # for tri in triples[:50]:
-    #     print(tri)
     
     # build vocabulary
     word_counter = Counter()
@@ -157,6 +155,14 @@ def encode_kb(args, vocab):
     knowledge_range = np.asarray(knowledge_range, dtype=np.int64)
     descs = np.asarray(descs, dtype=np.int64)
     print(so_pair.shape, knowledge_range.shape, descs.shape)
+    for tri in triples[:5]:
+         print(tri)
+    for tri in so_pair[:5]:
+         print(tri)
+    for tri in knowledge_range[:5]:
+         print(tri)
+    for tri in descs[:5]:
+         print(tri)
 
     with open(os.path.join(args.output_dir, 'wiki.pt'), 'wb') as f:
         pickle.dump(so_pair, f)

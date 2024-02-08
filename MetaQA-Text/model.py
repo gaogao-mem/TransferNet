@@ -62,7 +62,10 @@ class TransferNet(nn.Module):
         
 
     def forward(self, questions, e_s, answers=None, hop=None):
+        print("forward")
+        print(questions.shape, questions.size(1), questions.eq(0).long().sum(dim=1))
         question_lens = questions.size(1) - questions.eq(0).long().sum(dim=1) # 0 means <PAD>
+        print(question_lens)
         q_word_emb = self.word_dropout(self.word_embeddings(questions)) # [bsz, max_q, dim_hidden]
         q_word_h, q_embeddings, q_hn = self.question_encoder(q_word_emb, question_lens) # [bsz, max_q, dim_h], [bsz, dim_h], [num_layers, bsz, dim_h]
 
@@ -124,13 +127,18 @@ class TransferNet(nn.Module):
                 # print('step {}, desc number {}'.format(t, len(rg)))
                 pair = self.kb_pair[rg] # [rsz, 2]
                 desc = self.kb_desc[rg] # [rsz, max_desc]
+                print("desc ", desc.shape, desc.size(1), desc.eq(0).long().sum(dim=1))
                 desc_lens = desc.size(1) - desc.eq(0).long().sum(dim=1)
+                print(desc_lens)
                 desc_word_emb = self.word_dropout(self.word_embeddings(desc))
+                print(desc_word_emb.shape)
                 desc_word_h, desc_embeddings, _ = self.desc_encoder(desc_word_emb, desc_lens) # [rsz, dim_h]
+                print(desc_word_h.shape, desc_embeddings.shape)
                 d_logit = self.rel_classifier(ctx_h[i:i+1] * desc_embeddings).squeeze(1) # [rsz,]
                 d_prob = torch.sigmoid(d_logit) # [rsz,]
                 # transfer probability
                 e_stack.append(self.follow(last_e[i], pair, d_prob))
+                print("e_stack ", e_stack.shape)
 
                 # collect path
                 act_idx = d_prob.gt(0.9)
@@ -139,6 +147,7 @@ class TransferNet(nn.Module):
                 path_infos[i][t] = [(act_pair[_][0], act_desc[_], act_pair[_][1]) for _ in range(len(act_pair))]
 
             last_e = torch.stack(e_stack, dim=0)
+            print("last_e ", last_e.shape)
 
             # reshape >1 scores to 1 in a differentiable way
             m = last_e.gt(1).float()

@@ -79,6 +79,7 @@ def train(args):
             answer = idx_to_one_hot(answer, len(vocab['entity2id'])).to(device)
             answer[:, 0] = 0
             hop = hop.to(device)
+            print("question: ", question[0], "\ntopic_entity: ", topic_entity[0], "\nanswer: ", answer[0], "\nhop: ", hop[0])
             loss = model(question, topic_entity, answer, hop)
             optimizer.zero_grad()
             if isinstance(loss, dict):
